@@ -8,16 +8,49 @@
 <body>
   <main>
     <h1>DALL-E Prompt Queue</h1>
-    <label for="prompt-list">Prompts</label>
-    <textarea id="prompt-list" rows="8" placeholder="Paste prompts here"></textarea>
+    <section class="field-group">
+      <label for="prompt-list">Prompts</label>
+      <textarea id="prompt-list" rows="8" placeholder="Paste prompts here"></textarea>
+    </section>
 
-    <label for="separator">Separator</label>
-    <input id="separator" type="text" maxlength="5" value="|" />
-    <p class="hint">Prompts will be split by the separator. Leave empty to split by new lines.</p>
+    <section class="field-group">
+      <label for="separator">Separator</label>
+      <input id="separator" type="text" maxlength="5" value="|" />
+      <p class="hint">Prompts will be split by the separator. Leave empty to split by new lines.</p>
+    </section>
 
-    <button id="start">Start Queue</button>
+    <section class="sequence-manager" aria-labelledby="sequence-manager-title">
+      <div class="sequence-manager__header">
+        <h2 id="sequence-manager-title">Saved Prompt Sequences</h2>
+        <button id="save-sequence" class="secondary" type="button">Save Sequence</button>
+      </div>
 
-    <section id="status" aria-live="polite"></section>
+      <div class="sequence-form">
+        <div class="field-group">
+          <label for="sequence-name">Sequence name</label>
+          <input id="sequence-name" type="text" placeholder="Seasonal promotion flow" maxlength="80" />
+        </div>
+
+        <div class="field-group">
+          <label for="sequence-description">Description <span class="hint-inline">(optional)</span></label>
+          <input id="sequence-description" type="text" placeholder="Used for holiday campaign prompts" maxlength="160" />
+        </div>
+
+        <div class="sequence-form__actions">
+          <button id="cancel-sequence-edit" class="link" type="button" hidden>Cancel edit</button>
+        </div>
+      </div>
+
+      <div id="sequence-feedback" role="status" aria-live="polite"></div>
+
+      <ul id="sequence-list" class="sequence-list" aria-live="polite"></ul>
+    </section>
+
+    <div class="actions">
+      <button id="start">Start Queue</button>
+    </div>
+
+    <section id="status" aria-live="polite" class="status-log"></section>
   </main>
   <script src="popup.js" type="module"></script>
 </body>
