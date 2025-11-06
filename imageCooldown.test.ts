@@ -7,7 +7,7 @@ import {
   isImageCooldownMessage,
   isImageCooldownResponse,
   withImageCooldownRetry,
-} from '../utils/imageCooldown';
+} from './imageCooldown';
 
 describe('image cooldown utilities', () => {
   it('detects cooldown phrases in plain text', () => {

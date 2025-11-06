@@ -8,6 +8,7 @@ This repository contains a Chrome extension that queues a list of prompts for DA
 - Choose the separator character (defaults to `|`; leave empty to use new lines).
 - Automatically sends each prompt to ChatGPT and waits for the image generation to finish before moving to the next one.
 - Displays real-time progress updates in the popup.
+- Save your favorite prompt sequences for quick reuse, including optional descriptions.
 
 ## Installation
 
