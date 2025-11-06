@@ -15,6 +15,14 @@ function notify(text) {
 
 function getComposer() {
   const selectors = [
+    'textarea[data-testid="prompt-text-input"]',
+    'textarea[data-testid="prompt-textarea"]',
+    'textarea[data-testid="textbox"]',
+    'div[data-testid="prompt-textarea"] textarea',
+    'div[data-testid="prompt-textarea"] [contenteditable="true"]',
+    'div[role="textbox"][data-testid="prompt-textarea"]',
+    'div[role="textbox"][aria-label*="Describe" i]',
+    'div[role="textbox"][aria-label*="want to see" i]',
     'textarea[data-id="root"]',
     'div[data-id="root"] textarea',
     'div[contenteditable="true"][data-id="root"]',
@@ -41,7 +49,13 @@ function getComposer() {
       if (nestedEditable) {
         return nestedEditable;
       }
-      return el;
+      if (el.matches('textarea, input')) {
+        return el;
+      }
+      const nestedTextarea = el.querySelector?.('textarea');
+      if (nestedTextarea) {
+        return nestedTextarea;
+      }
     }
   }
   return null;
@@ -62,6 +76,9 @@ function getSendButton() {
     'button[data-testid="send-button"]',
     'button[data-testid="send"]',
     'button[data-testid="composer-send-button"]',
+    'button[data-testid="prompt-send-button"]',
+    'button[data-testid="prompt-submit-button"]',
+    'button[data-testid="prompt-submit"]',
     'button[data-testid*="composer"]',
     'button[data-testid*="prompt"]',
     'button[data-testid*="generate"]',
@@ -144,7 +161,12 @@ function setComposerValue(composer, prompt) {
     } else {
       composer.value = prompt;
     }
-    composer.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      composer.dispatchEvent(new InputEvent('input', { bubbles: true, data: prompt, inputType: 'insertFromPaste' }));
+    } catch (error) {
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    composer.dispatchEvent(new Event('change', { bubbles: true }));
     return;
   }
 
@@ -159,7 +181,12 @@ function setComposerValue(composer, prompt) {
     document.execCommand('selectAll', false, null);
     document.execCommand('delete', false, null);
     document.execCommand('insertText', prompt);
-    composer.dispatchEvent(new Event('input', { bubbles: true }));
+    try {
+      composer.dispatchEvent(new InputEvent('input', { bubbles: true, data: prompt, inputType: 'insertFromPaste' }));
+    } catch (error) {
+      composer.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    composer.dispatchEvent(new Event('change', { bubbles: true }));
     return;
   }
   try {
@@ -170,10 +197,11 @@ function setComposerValue(composer, prompt) {
   composer.dispatchEvent(new Event('input', { bubbles: true }));
   composer.textContent = prompt;
   try {
-    composer.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: prompt }));
+    composer.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste', data: prompt }));
   } catch (error) {
     composer.dispatchEvent(new Event('input', { bubbles: true }));
   }
+  composer.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 async function sendPrompt(prompt) {
@@ -199,7 +227,7 @@ async function sendPrompt(prompt) {
 function isStreaming() {
   const streamingTurn = document.querySelector('[data-testid="conversation-turn"][data-state="streaming"]');
   if (streamingTurn) return true;
-  const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"]');
+  const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
   if (spinner) return true;
   const sendButton = getSendButton();
   if (sendButton && sendButton.disabled) return true;
