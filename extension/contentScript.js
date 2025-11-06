@@ -307,6 +307,11 @@ function isStreaming() {
   if (spinner) return true;
   const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
   if (stopButton && isVisible(stopButton)) return true;
+  const buttons = Array.from(document.querySelectorAll('button'));
+  for (const button of buttons) {
+    if (!isVisible(button)) continue;
+    if (isStopButton(button)) return true;
+  }
   const sendButton = getSendButton({ includeDisabled: true });
   if (sendButton && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
   return false;
