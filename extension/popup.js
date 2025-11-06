@@ -51,7 +51,10 @@ async function startQueue() {
       });
     });
 
-    if (!tab || !tab.id || !/^https:\/\/chat\.openai\.com\//.test(tab.url || '')) {
+    const url = tab?.url || '';
+    const isChatGpt = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/)/.test(url);
+
+    if (!tab || !tab.id || !isChatGpt) {
       throw new Error('Please focus the ChatGPT tab before starting the queue.');
     }
 
