@@ -78,7 +78,8 @@ function isVisible(element) {
   return rect.width > 0 && rect.height > 0;
 }
 
-function getSendButton() {
+function getSendButton(options = {}) {
+  const { includeDisabled = false } = options;
   const selectors = [
     'button[data-testid="send-button"]',
     'button[data-testid="send"]',
@@ -99,8 +100,10 @@ function getSendButton() {
     const buttons = Array.from(document.querySelectorAll(selector));
     const visibleButton = buttons.find((button) => {
       if (!isVisible(button)) return false;
-      if (button.disabled) return false;
-      if (button.getAttribute('aria-disabled') === 'true') return false;
+      if (!includeDisabled) {
+        if (button.disabled) return false;
+        if (button.getAttribute('aria-disabled') === 'true') return false;
+      }
       return true;
     });
     if (visibleButton) {
@@ -112,7 +115,9 @@ function getSendButton() {
   const allButtons = Array.from(document.querySelectorAll('button'));
   for (const button of allButtons) {
     if (!isVisible(button)) continue;
-    if (button.disabled || button.getAttribute('aria-disabled') === 'true') continue;
+    if (!includeDisabled) {
+      if (button.disabled || button.getAttribute('aria-disabled') === 'true') continue;
+    }
     const text = button.textContent?.trim().toLowerCase() || '';
     if (textMatches.some((match) => text.includes(match))) {
       return button;
@@ -287,8 +292,8 @@ function isStreaming() {
   if (streamingTurn) return true;
   const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
   if (spinner) return true;
-  const sendButton = getSendButton();
-  if (sendButton && sendButton.disabled) return true;
+  const sendButton = getSendButton({ includeDisabled: true });
+  if (sendButton && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
   return false;
 }
 
