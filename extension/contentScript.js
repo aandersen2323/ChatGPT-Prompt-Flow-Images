@@ -19,7 +19,15 @@ function getComposer() {
     'div[data-id="root"] textarea',
     'div[contenteditable="true"][data-id="root"]',
     'div[data-lexical-editor="true"][contenteditable="true"]',
-    'textarea[placeholder*="Message"]',
+    'textarea[placeholder*="Message" i]',
+    'textarea[placeholder*="Describe" i]',
+    'textarea[placeholder*="Create" i]',
+    'textarea[data-testid*="composer"]',
+    'textarea[data-testid*="prompt"]',
+    'div[contenteditable="true"][data-testid*="composer"]',
+    'div[contenteditable="true"][data-testid*="prompt"]',
+    'div[role="textbox"][data-testid*="composer"]',
+    'div[role="textbox"][data-testid*="prompt"]',
     'div[contenteditable="true"]',
     'textarea'
   ];
@@ -53,9 +61,14 @@ function getSendButton() {
   const selectors = [
     'button[data-testid="send-button"]',
     'button[data-testid="send"]',
-    'button[aria-label*="Send"]',
-    'button[aria-label*="submit"]',
-    'button[data-testid*="send"]',
+    'button[data-testid="composer-send-button"]',
+    'button[data-testid*="composer"]',
+    'button[data-testid*="prompt"]',
+    'button[data-testid*="generate"]',
+    'button[data-testid*="submit"]',
+    'button[aria-label*="Send" i]',
+    'button[aria-label*="submit" i]',
+    'button[aria-label*="Generate" i]',
     'form button[type="submit"]'
   ];
   for (const selector of selectors) {
@@ -64,6 +77,29 @@ function getSendButton() {
     if (visibleButton) {
       return visibleButton;
     }
+  }
+
+  const textMatches = ['send', 'generate', 'create', 'submit'];
+  const allButtons = Array.from(document.querySelectorAll('button'));
+  for (const button of allButtons) {
+    if (!isVisible(button)) continue;
+    const text = button.textContent?.trim().toLowerCase() || '';
+    if (textMatches.some((match) => text.includes(match))) {
+      return button;
+    }
+  }
+
+  return null;
+}
+
+async function waitForSendButton(timeoutMs = 2000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const button = getSendButton();
+    if (button) {
+      return button;
+    }
+    await sleep(100);
   }
   return null;
 }
@@ -145,14 +181,14 @@ async function sendPrompt(prompt) {
   composer.focus();
   setComposerValue(composer, prompt);
   await sleep(150);
-  const sendButton = getSendButton();
+  const sendButton = await waitForSendButton();
   if (sendButton) {
     sendButton.click();
     return;
   }
   dispatchEnter(composer);
-  await sleep(150);
-  const retryButton = getSendButton();
+  await sleep(300);
+  const retryButton = await waitForSendButton();
   if (retryButton) {
     retryButton.click();
     return;
