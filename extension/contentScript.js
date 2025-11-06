@@ -150,6 +150,7 @@ async function processPrompts(prompts) {
   isProcessing = true;
   try {
     await ensureComposer();
+    await waitForCompletion();
     for (let index = 0; index < prompts.length; index++) {
       const prompt = prompts[index];
       notify(`(${index + 1}/${prompts.length}) Sending prompt...`);
