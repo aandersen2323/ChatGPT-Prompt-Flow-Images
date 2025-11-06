@@ -14,14 +14,14 @@ This repository contains a Chrome extension that queues a list of prompts for DA
 1. Clone or download this repository.
 2. Open **chrome://extensions** in Google Chrome.
 3. Enable **Developer mode** in the top-right corner.
-4. Click **Load unpacked** and select the root folder of this repository (the one that contains `manifest.json`).
+4. Click **Load unpacked** and select the `extension` directory from this repository.
 
 ## Usage
 
 1. Open [chat.openai.com](https://chat.openai.com) and start a DALL-E conversation.
 2. Open the extension popup.
 3. Paste the prompts into the text area and set your preferred separator.
-4. With the ChatGPT conversation open (and ideally focused), click **Start Queue**. The extension will locate the active DALL-E tab, send each prompt sequentially, and wait for every image generation to finish before continuing.
+4. Make sure the ChatGPT tab stays focused, then click **Start Queue**. The extension will send each prompt to ChatGPT sequentially and wait for each image generation to complete.
 
 > **Note:** The extension interacts with the current ChatGPT interface using DOM selectors. If the ChatGPT UI changes, the extension may need updates to continue functioning correctly.
 
@@ -30,7 +30,7 @@ This repository contains a Chrome extension that queues a list of prompts for DA
 - Manifest Version: 3
 - Primary files:
   - `manifest.json`
-- `extension/popup.html`, `extension/popup.js`, `extension/popup.css`
-- `extension/contentScript.js`
+  - `popup.html`, `popup.js`, `popup.css`
+  - `contentScript.js`
 
 Feel free to modify the selectors in `contentScript.js` if ChatGPT updates its interface.

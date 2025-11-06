@@ -25,41 +25,6 @@ function parsePrompts(rawText, separator) {
   return prompts.map(p => p.trim()).filter(Boolean);
 }
 
-function queryTabs(queryInfo) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.query(queryInfo, (tabs) => {
-      const err = chrome.runtime.lastError;
-      if (err) {
-        reject(new Error(err.message));
-        return;
-      }
-      resolve(tabs || []);
-    });
-  });
-}
-
-function isChatGptTab(tab) {
-  return Boolean(tab?.id && /^https:\/\/chat\.openai\.com\//.test(tab.url || ''));
-}
-
-async function findChatGptTab() {
-  const [activeTab] = await queryTabs({ active: true, lastFocusedWindow: true });
-  if (isChatGptTab(activeTab)) {
-    return activeTab;
-  }
-
-  const candidateTabs = await queryTabs({ url: ['https://chat.openai.com/*'] });
-  if (candidateTabs.length === 1 && isChatGptTab(candidateTabs[0])) {
-    return candidateTabs[0];
-  }
-
-  throw new Error(
-    candidateTabs.length > 1
-      ? 'Multiple ChatGPT tabs detected. Please activate the one running DALL-E and try again.'
-      : 'Could not find an active ChatGPT tab. Please open chat.openai.com and select the conversation you want to use.'
-  );
-}
-
 async function startQueue() {
   resetStatus();
   const raw = promptList.value.trim();
@@ -75,7 +40,20 @@ async function startQueue() {
     startButton.disabled = true;
     appendStatus(`Starting queue with ${prompts.length} prompt(s)...`);
 
-    const tab = await findChatGptTab();
+    const tab = await new Promise((resolve, reject) => {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const err = chrome.runtime.lastError;
+        if (err) {
+          reject(new Error(err.message));
+          return;
+        }
+        resolve(tabs?.[0]);
+      });
+    });
+
+    if (!tab || !tab.id || !/^https:\/\/chat\.openai\.com\//.test(tab.url || '')) {
+      throw new Error('Please focus the ChatGPT tab before starting the queue.');
+    }
 
     const response = await new Promise((resolve, reject) => {
       chrome.tabs.sendMessage(
