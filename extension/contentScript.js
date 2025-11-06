@@ -78,6 +78,17 @@ function isVisible(element) {
   return rect.width > 0 && rect.height > 0;
 }
 
+function isStopButton(button) {
+  if (!button) return false;
+  const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
+  const dataTestId = button.getAttribute('data-testid')?.toLowerCase() || '';
+  const text = button.textContent?.trim().toLowerCase() || '';
+  if (ariaLabel.includes('stop') || ariaLabel.includes('cancel')) return true;
+  if (dataTestId.includes('stop') || dataTestId.includes('cancel')) return true;
+  if (text.includes('stop') || text.includes('cancel')) return true;
+  return false;
+}
+
 function getSendButton(options = {}) {
   const { includeDisabled = false } = options;
   const selectors = [
@@ -100,6 +111,7 @@ function getSendButton(options = {}) {
     const buttons = Array.from(document.querySelectorAll(selector));
     const visibleButton = buttons.find((button) => {
       if (!isVisible(button)) return false;
+      if (isStopButton(button)) return false;
       if (!includeDisabled) {
         if (button.disabled) return false;
         if (button.getAttribute('aria-disabled') === 'true') return false;
@@ -115,6 +127,7 @@ function getSendButton(options = {}) {
   const allButtons = Array.from(document.querySelectorAll('button'));
   for (const button of allButtons) {
     if (!isVisible(button)) continue;
+    if (isStopButton(button)) continue;
     if (!includeDisabled) {
       if (button.disabled || button.getAttribute('aria-disabled') === 'true') continue;
     }
@@ -292,6 +305,8 @@ function isStreaming() {
   if (streamingTurn) return true;
   const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
   if (spinner) return true;
+  const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
+  if (stopButton && isVisible(stopButton)) return true;
   const sendButton = getSendButton({ includeDisabled: true });
   if (sendButton && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
   return false;
