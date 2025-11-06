@@ -20,6 +20,10 @@ function getComposer() {
     'textarea[data-testid="textbox"]',
     'div[data-testid="prompt-textarea"] textarea',
     'div[data-testid="prompt-textarea"] [contenteditable="true"]',
+    'div[data-testid="prompt-editor"] textarea',
+    'div[data-testid="prompt-editor"] [contenteditable="true"]',
+    'div[data-testid="composer-textarea"] textarea',
+    'div[data-testid="composer-textarea"] [contenteditable="true"]',
     'div[role="textbox"][data-testid="prompt-textarea"]',
     'div[role="textbox"][aria-label*="Describe" i]',
     'div[role="textbox"][aria-label*="want to see" i]',
@@ -32,10 +36,13 @@ function getComposer() {
     'textarea[placeholder*="Create" i]',
     'textarea[data-testid*="composer"]',
     'textarea[data-testid*="prompt"]',
+    'textarea[data-testid*="message"]',
     'div[contenteditable="true"][data-testid*="composer"]',
     'div[contenteditable="true"][data-testid*="prompt"]',
+    'div[contenteditable="true"][data-testid*="message"]',
     'div[role="textbox"][data-testid*="composer"]',
     'div[role="textbox"][data-testid*="prompt"]',
+    'div[role="textbox"][data-testid*="message"]',
     'div[contenteditable="true"]',
     'textarea'
   ];
@@ -90,7 +97,12 @@ function getSendButton() {
   ];
   for (const selector of selectors) {
     const buttons = Array.from(document.querySelectorAll(selector));
-    const visibleButton = buttons.find((button) => isVisible(button));
+    const visibleButton = buttons.find((button) => {
+      if (!isVisible(button)) return false;
+      if (button.disabled) return false;
+      if (button.getAttribute('aria-disabled') === 'true') return false;
+      return true;
+    });
     if (visibleButton) {
       return visibleButton;
     }
@@ -100,6 +112,7 @@ function getSendButton() {
   const allButtons = Array.from(document.querySelectorAll('button'));
   for (const button of allButtons) {
     if (!isVisible(button)) continue;
+    if (button.disabled || button.getAttribute('aria-disabled') === 'true') continue;
     const text = button.textContent?.trim().toLowerCase() || '';
     if (textMatches.some((match) => text.includes(match))) {
       return button;
@@ -175,27 +188,72 @@ function setComposerValue(composer, prompt) {
   const selection = window.getSelection();
   if (selection) {
     selection.removeAllRanges();
-  }
-  composer.innerHTML = '';
-  if (typeof document.execCommand === 'function') {
-    document.execCommand('selectAll', false, null);
-    document.execCommand('delete', false, null);
-    document.execCommand('insertText', prompt);
     try {
-      composer.dispatchEvent(new InputEvent('input', { bubbles: true, data: prompt, inputType: 'insertFromPaste' }));
+      const range = document.createRange();
+      range.selectNodeContents(composer);
+      selection.addRange(range);
+    } catch (error) {
+      // Ignore if the node cannot be selected (e.g., shadow DOM).
+    }
+  }
+  const clearComposer = () => {
+    if (typeof document.execCommand === 'function') {
+      document.execCommand('selectAll', false, null);
+      document.execCommand('delete', false, null);
+    } else if ('innerHTML' in composer) {
+      composer.innerHTML = '';
+    } else {
+      composer.textContent = '';
+    }
+    try {
+      composer.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward', data: '' }));
     } catch (error) {
       composer.dispatchEvent(new Event('input', { bubbles: true }));
     }
-    composer.dispatchEvent(new Event('change', { bubbles: true }));
-    return;
+  };
+
+  clearComposer();
+
+  const attemptPaste = () => {
+    try {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData('text/plain', prompt);
+      const pasteEvent = new ClipboardEvent('paste', {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      });
+      if (composer.dispatchEvent(pasteEvent)) {
+        const text = composer.textContent || composer.innerText || '';
+        return text.trim().length;
+      }
+    } catch (error) {
+      // Ignore browsers without ClipboardEvent/DataTransfer constructors.
+    }
+    return false;
+  };
+
+  const attemptExecCommand = () => {
+    if (typeof document.execCommand === 'function') {
+      document.execCommand('insertText', false, prompt);
+      const text = composer.textContent || composer.innerText || '';
+      return text.trim().length;
+    }
+    return false;
+  };
+
+  const attemptDirectWrite = () => {
+    composer.textContent = prompt;
+    const text = composer.textContent || composer.innerText || '';
+    return text.trim().length;
+  };
+
+  if (!attemptPaste()) {
+    if (!attemptExecCommand()) {
+      attemptDirectWrite();
+    }
   }
-  try {
-    composer.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, inputType: 'insertText', data: '' }));
-  } catch (error) {
-    composer.dispatchEvent(new Event('beforeinput', { bubbles: true }));
-  }
-  composer.dispatchEvent(new Event('input', { bubbles: true }));
-  composer.textContent = prompt;
+
   try {
     composer.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste', data: prompt }));
   } catch (error) {
