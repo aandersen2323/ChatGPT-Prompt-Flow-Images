@@ -25,6 +25,61 @@ function parsePrompts(rawText, separator) {
   return prompts.map(p => p.trim()).filter(Boolean);
 }
 
+async function sendMessageToTab(tabId, message) {
+  const send = () => new Promise((resolve, reject) => {
+    chrome.tabs.sendMessage(tabId, message, (resp) => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        reject(new Error(err.message));
+        return;
+      }
+      resolve(resp);
+    });
+  });
+
+  try {
+    return await send();
+  } catch (error) {
+    if (!/Receiving end does not exist/i.test(error.message)) {
+      throw error;
+    }
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['contentScript.js'],
+      });
+    } catch (injectError) {
+      const message = injectError?.message || 'Unknown error while injecting content script.';
+      throw new Error(`Could not inject the helper script. ${message}`);
+    }
+
+    return await send();
+  }
+}
+
+async function getActiveChatGptTab() {
+  const tab = await new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const err = chrome.runtime.lastError;
+      if (err) {
+        reject(new Error(err.message));
+        return;
+      }
+      resolve(tabs?.[0]);
+    });
+  });
+
+  const url = tab?.url || '';
+  const isChatGpt = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/)/.test(url);
+
+  if (!tab || !tab.id || !isChatGpt) {
+    throw new Error('Please focus the ChatGPT tab before starting the queue.');
+  }
+
+  return tab;
+}
+
 async function startQueue() {
   resetStatus();
   const raw = promptList.value.trim();
@@ -40,40 +95,11 @@ async function startQueue() {
     startButton.disabled = true;
     appendStatus(`Starting queue with ${prompts.length} prompt(s)...`);
 
-    const tab = await new Promise((resolve, reject) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const err = chrome.runtime.lastError;
-        if (err) {
-          reject(new Error(err.message));
-          return;
-        }
-        resolve(tabs?.[0]);
-      });
-    });
+    const tab = await getActiveChatGptTab();
 
-    const url = tab?.url || '';
-    const isChatGpt = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/)/.test(url);
-
-    if (!tab || !tab.id || !isChatGpt) {
-      throw new Error('Please focus the ChatGPT tab before starting the queue.');
-    }
-
-    const response = await new Promise((resolve, reject) => {
-      chrome.tabs.sendMessage(
-        tab.id,
-        {
-          type: 'START_PROMPT_QUEUE',
-          prompts,
-        },
-        (resp) => {
-          const err = chrome.runtime.lastError;
-          if (err) {
-            reject(new Error(err.message));
-            return;
-          }
-          resolve(resp);
-        }
-      );
+    const response = await sendMessageToTab(tab.id, {
+      type: 'START_PROMPT_QUEUE',
+      prompts,
     });
     if (response && response.ok) {
       appendStatus('Queue complete.');
@@ -83,7 +109,11 @@ async function startQueue() {
       appendStatus('Queue finished with unknown status.');
     }
   } catch (error) {
-    appendStatus(`Failed: ${error.message}`);
+    let message = error?.message || 'Unknown error.';
+    if (/Receiving end does not exist/i.test(message)) {
+      message = 'Could not connect to the ChatGPT tab. Please reload the page and try again.';
+    }
+    appendStatus(`Failed: ${message}`);
   } finally {
     startButton.disabled = false;
   }
