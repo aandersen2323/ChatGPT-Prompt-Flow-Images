@@ -13,11 +13,15 @@
     "scripting"
   ],
   "host_permissions": [
-    "https://chat.openai.com/*"
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*"
   ],
   "content_scripts": [
     {
-      "matches": ["https://chat.openai.com/*"],
+      "matches": [
+        "https://chat.openai.com/*",
+        "https://chatgpt.com/*"
+      ],
       "js": ["contentScript.js"],
       "run_at": "document_idle"
     }
