@@ -39,19 +39,49 @@ function getComposer() {
   return null;
 }
 
+function isVisible(element) {
+  if (!element) return false;
+  const style = window.getComputedStyle(element);
+  if (style.visibility === 'hidden' || style.display === 'none') {
+    return false;
+  }
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+}
+
 function getSendButton() {
   const selectors = [
     'button[data-testid="send-button"]',
+    'button[data-testid="send"]',
     'button[aria-label*="Send"]',
+    'button[aria-label*="submit"]',
+    'button[data-testid*="send"]',
     'form button[type="submit"]'
   ];
   for (const selector of selectors) {
-    const btn = document.querySelector(selector);
-    if (btn) {
-      return btn;
+    const buttons = Array.from(document.querySelectorAll(selector));
+    const visibleButton = buttons.find((button) => isVisible(button));
+    if (visibleButton) {
+      return visibleButton;
     }
   }
   return null;
+}
+
+function dispatchEnter(composer) {
+  const eventInit = {
+    key: 'Enter',
+    code: 'Enter',
+    which: 13,
+    keyCode: 13,
+    bubbles: true,
+    cancelable: true
+  };
+  const events = ['keydown', 'keypress', 'keyup'];
+  for (const type of events) {
+    const event = new KeyboardEvent(type, eventInit);
+    composer.dispatchEvent(event);
+  }
 }
 
 async function ensureComposer() {
@@ -116,10 +146,18 @@ async function sendPrompt(prompt) {
   setComposerValue(composer, prompt);
   await sleep(150);
   const sendButton = getSendButton();
-  if (!sendButton) {
-    throw new Error('Send button not found. The ChatGPT UI might have changed.');
+  if (sendButton) {
+    sendButton.click();
+    return;
   }
-  sendButton.click();
+  dispatchEnter(composer);
+  await sleep(150);
+  const retryButton = getSendButton();
+  if (retryButton) {
+    retryButton.click();
+    return;
+  }
+  throw new Error('Send button not found. The ChatGPT UI might have changed.');
 }
 
 function isStreaming() {
