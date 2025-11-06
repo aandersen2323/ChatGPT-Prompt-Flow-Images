@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT DALL-E Prompt Queue",
+  "version": "1.0.0",
+  "description": "Queue multiple prompts for DALL-E image generation on ChatGPT and run them sequentially.",
+  "action": {
+    "default_popup": "extension/popup.html",
+    "default_title": "Prompt Queue"
+  },
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://chat.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://chat.openai.com/*"],
+      "js": ["extension/contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

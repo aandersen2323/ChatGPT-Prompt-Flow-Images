@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prompt Queue</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <main>
+    <h1>DALL-E Prompt Queue</h1>
+    <label for="prompt-list">Prompts</label>
+    <textarea id="prompt-list" rows="8" placeholder="Paste prompts here"></textarea>
+
+    <label for="separator">Separator</label>
+    <input id="separator" type="text" maxlength="5" value="|" />
+    <p class="hint">Prompts will be split by the separator. Leave empty to split by new lines.</p>
+
+    <button id="start">Start Queue</button>
+
+    <section id="status" aria-live="polite"></section>
+  </main>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
