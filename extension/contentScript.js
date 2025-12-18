@@ -1,16 +1,5 @@
-The error `Uncaught SyntaxError: Illegal return statement` happens because you are using a `return` command at the top level of your script. In JavaScript files, `return` can only be used *inside* a function.
-
-Additionally, looking further down your code, you still have the **duplicate declaration** of `isGeminiSite` mentioned previously. This will cause a new crash as soon as you fix the return error.
-
-Here is the corrected code. It wraps the entire script in an "Immediately Invoked Function Expression" (IIFE), which makes the `return` statement valid, and removes the duplicate line.
-
-### Corrected `extension/contentScript.js`
-
-Replace your entire `contentScript.js` file with this:
-
-```javascript
 (function() {
-  // 1. Wrap everything in a function so 'return' is legal.
+  // Prevent the script from running multiple times if injected repeatedly.
   if (window.__promptFlowContentScriptInjected) {
     return;
   }
@@ -19,7 +8,7 @@ Replace your entire `contentScript.js` file with this:
   let isProcessing = false;
   let lastPromptSentAt = 0;
 
-  // 2. Fixed: Removed the duplicate 'const isGeminiSite' declaration
+  // Single declaration of the site check
   const isGeminiSite = window.location.hostname.includes('gemini.google.com');
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,13 +20,13 @@ Replace your entire `contentScript.js` file with this:
         void chrome.runtime.lastError;
       });
     } catch (error) {
-      // Silently swallow errors
+      // Silently swallow errors (e.g., if messaging API is unavailable).
     }
   }
 
   function getComposer() {
     const selectors = [
-      // Gemini-specific editors
+      // Gemini-specific editors.
       'div[role="textbox"][aria-label*="Gemini" i]',
       'div[role="textbox"][aria-label*="prompt" i]',
       'textarea[aria-label*="Gemini" i]',
@@ -122,6 +111,7 @@ Replace your entire `contentScript.js` file with this:
   function getSendButton(options = {}) {
     const { includeDisabled = false } = options;
     const selectors = [
+      // Gemini send buttons
       'button[aria-label*="send message" i]',
       'button[aria-label*="send to gemini" i]',
       'button[aria-label*="submit to gemini" i]',
@@ -366,47 +356,4 @@ Replace your entire `contentScript.js` file with this:
           return;
         }
       }
-      await sleep(1000);
-    }
-    throw new Error('Timed out while waiting for DALL-E to finish.');
-  }
-
-  async function processPrompts(prompts) {
-    isProcessing = true;
-    try {
-      await ensureComposer();
-      await waitForCompletion();
-      for (let index = 0; index < prompts.length; index++) {
-        const prompt = prompts[index];
-        notify(`(${index + 1}/${prompts.length}) Sending prompt...`);
-        await sendPrompt(prompt);
-        notify(`(${index + 1}/${prompts.length}) Waiting for completion...`);
-        await waitForCompletion();
-        notify(`(${index + 1}/${prompts.length}) Done.`);
-        await sleep(500);
-      }
-    } finally {
-      isProcessing = false;
-    }
-  }
-
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message?.type === 'START_PROMPT_QUEUE') {
-      if (isProcessing) {
-        sendResponse({ error: 'A prompt queue is already running.' });
-        return;
-      }
-      processPrompts(message.prompts)
-        .then(() => sendResponse({ ok: true }))
-        .catch((error) => {
-          notify(`Error: ${error.message}`);
-          sendResponse({ error: error.message });
-        });
-      return true;
-    }
-    return undefined;
-  });
-
-})();
-
-```
+      await
