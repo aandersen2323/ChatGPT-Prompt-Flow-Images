@@ -356,4 +356,45 @@
           return;
         }
       }
-      await
+      await sleep(1000);
+    }
+    throw new Error('Timed out while waiting for DALL-E to finish.');
+  }
+
+  async function processPrompts(prompts) {
+    isProcessing = true;
+    try {
+      await ensureComposer();
+      await waitForCompletion();
+      for (let index = 0; index < prompts.length; index++) {
+        const prompt = prompts[index];
+        notify(`(${index + 1}/${prompts.length}) Sending prompt...`);
+        await sendPrompt(prompt);
+        notify(`(${index + 1}/${prompts.length}) Waiting for completion...`);
+        await waitForCompletion();
+        notify(`(${index + 1}/${prompts.length}) Done.`);
+        await sleep(500);
+      }
+    } finally {
+      isProcessing = false;
+    }
+  }
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message?.type === 'START_PROMPT_QUEUE') {
+      if (isProcessing) {
+        sendResponse({ error: 'A prompt queue is already running.' });
+        return;
+      }
+      processPrompts(message.prompts)
+        .then(() => sendResponse({ ok: true }))
+        .catch((error) => {
+          notify(`Error: ${error.message}`);
+          sendResponse({ error: error.message });
+        });
+      return true;
+    }
+    return undefined;
+  });
+
+})();
