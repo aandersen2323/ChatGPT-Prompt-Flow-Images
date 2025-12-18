@@ -19,10 +19,10 @@ This repository contains a Chrome extension that queues a list of prompts for DA
 
 ## Usage
 
-1. Open [chat.openai.com](https://chat.openai.com) and start a DALL-E conversation.
+1. Open [chat.openai.com](https://chat.openai.com) (or [gemini.google.com](https://gemini.google.com) for Gemini) and start a DALL-E or Gemini conversation.
 2. Open the extension popup.
 3. Paste the prompts into the text area and set your preferred separator.
-4. Make sure the ChatGPT tab stays focused, then click **Start Queue**. The extension will send each prompt to ChatGPT sequentially and wait for each image generation to complete.
+4. Make sure the ChatGPT/Gemini tab stays focused, then click **Start Queue**. The extension will send each prompt sequentially and wait for each image generation to complete.
 
 > **Note:** The extension interacts with the current ChatGPT interface using DOM selectors. If the ChatGPT UI changes, the extension may need updates to continue functioning correctly.
 
