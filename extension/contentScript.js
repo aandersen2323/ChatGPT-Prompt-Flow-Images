@@ -1,4 +1,7 @@
 let isProcessing = false;
+let lastPromptSentAt = 0;
+
+const isGeminiSite = window.location.hostname.includes('gemini.google.com');
 
 const isGeminiSite = window.location.hostname.includes('gemini.google.com');
 
@@ -302,6 +305,7 @@ async function sendPrompt(prompt) {
   await sleep(150);
   const sendButton = await waitForSendButton();
   if (sendButton) {
+    lastPromptSentAt = Date.now();
     sendButton.click();
     return;
   }
@@ -309,6 +313,7 @@ async function sendPrompt(prompt) {
   await sleep(300);
   const retryButton = await waitForSendButton();
   if (retryButton) {
+    lastPromptSentAt = Date.now();
     retryButton.click();
     return;
   }
