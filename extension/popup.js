@@ -310,10 +310,10 @@ async function getActiveChatGptTab() {
   });
 
   const url = tab?.url || '';
-  const isChatGpt = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/)/.test(url);
+  const isSupported = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/|https:\/\/gemini\.google\.com\/)/.test(url);
 
-  if (!tab || !tab.id || !isChatGpt) {
-    throw new Error('Please focus the ChatGPT tab before starting the queue.');
+  if (!tab || !tab.id || !isSupported) {
+    throw new Error('Please focus the ChatGPT or Gemini tab before starting the queue.');
   }
 
   return tab;
