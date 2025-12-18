@@ -276,13 +276,7 @@ async function sendMessageToTab(tabId, message) {
     });
   });
 
-  try {
-    return await send();
-  } catch (error) {
-    if (!/Receiving end does not exist/i.test(error.message)) {
-      throw error;
-    }
-
+  const ensureInjected = async () => {
     try {
       await chrome.scripting.executeScript({
         target: { tabId },
@@ -292,7 +286,18 @@ async function sendMessageToTab(tabId, message) {
       const message = injectError?.message || 'Unknown error while injecting content script.';
       throw new Error(`Could not inject the helper script. ${message}`);
     }
+  };
 
+  await ensureInjected();
+
+  try {
+    return await send();
+  } catch (error) {
+    if (!/Receiving end does not exist/i.test(error.message)) {
+      throw error;
+    }
+
+    await ensureInjected();
     return await send();
   }
 }
@@ -310,10 +315,10 @@ async function getActiveChatGptTab() {
   });
 
   const url = tab?.url || '';
-  const isChatGpt = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/)/.test(url);
+  const isSupported = /^(https:\/\/chat\.openai\.com\/|https:\/\/chatgpt\.com\/|https:\/\/gemini\.google\.com\/)/.test(url);
 
-  if (!tab || !tab.id || !isChatGpt) {
-    throw new Error('Please focus the ChatGPT tab before starting the queue.');
+  if (!tab || !tab.id || !isSupported) {
+    throw new Error('Please focus the ChatGPT or Gemini tab before starting the queue.');
   }
 
   return tab;
@@ -350,7 +355,7 @@ async function startQueue() {
   } catch (error) {
     let message = error?.message || 'Unknown error.';
     if (/Receiving end does not exist/i.test(message)) {
-      message = 'Could not connect to the ChatGPT tab. Please reload the page and try again.';
+      message = 'Could not connect to the ChatGPT or Gemini tab. Please reload the page and try again.';
     }
     appendStatus(`Failed: ${message}`);
   } finally {
