@@ -331,7 +331,8 @@ function isStreaming() {
   const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
   if (stopButton && isVisible(stopButton)) return true;
   const sendButton = getSendButton({ includeDisabled: true });
-  if (sendButton && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
+  if (sendButton && isVisible(sendButton) && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
+
   return false;
 }
 
