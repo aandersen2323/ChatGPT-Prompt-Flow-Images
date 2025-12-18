@@ -316,24 +316,20 @@ async function sendPrompt(prompt) {
 }
 
 function isStreaming() {
-  const firstVisible = (selector) => {
-    const matches = document.querySelectorAll(selector);
-    for (const el of matches) {
-      if (isVisible(el)) return el;
-    }
-    return null;
-  };
-
-  if (firstVisible('[data-testid="conversation-turn"][data-state="streaming"]')) return true;
-  if (firstVisible('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]')) return true;
-
+  const streamingTurn = document.querySelector('[data-testid="conversation-turn"][data-state="streaming"]');
+  if (streamingTurn) return true;
+  const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
+  if (spinner) return true;
   if (isGeminiSite) {
-    if (firstVisible('button[aria-label*="stop response" i], button[aria-label*="cancel response" i], button[aria-label*="stop generating" i]')) return true;
-    if (firstVisible('[role="progressbar"], [aria-busy="true"]')) return true;
+    const geminiStop = document.querySelector(
+      'button[aria-label*="stop response" i], button[aria-label*="cancel response" i], button[aria-label*="stop generating" i]'
+    );
+    if (geminiStop && isVisible(geminiStop)) return true;
+    const geminiProgress = document.querySelector('[role="progressbar"], [aria-busy="true"]');
+    if (geminiProgress) return true;
   }
-
-  if (firstVisible('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]')) return true;
-
+  const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
+  if (stopButton && isVisible(stopButton)) return true;
   const sendButton = getSendButton({ includeDisabled: true });
   if (sendButton && isVisible(sendButton) && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
 
