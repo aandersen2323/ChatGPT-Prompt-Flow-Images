@@ -1,5 +1,7 @@
 let isProcessing = false;
 
+const isGeminiSite = window.location.hostname.includes('gemini.google.com');
+
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function notify(text) {
@@ -15,6 +17,14 @@ function notify(text) {
 
 function getComposer() {
   const selectors = [
+    // Gemini-specific editors.
+    'div[role="textbox"][aria-label*="Gemini" i]',
+    'div[role="textbox"][aria-label*="prompt" i]',
+    'textarea[aria-label*="Gemini" i]',
+    'textarea[aria-label*="prompt" i]',
+    'div[data-testid*="composer"] div[contenteditable="true"]',
+    'div[contenteditable="true"][data-lexical-editor="true"]',
+    'div[aria-label*="prompt" i][contenteditable="true"]',
     'textarea[data-testid="prompt-text-input"]',
     'textarea[data-testid="prompt-textarea"]',
     'textarea[data-testid="textbox"]',
@@ -92,6 +102,11 @@ function isStopButton(button) {
 function getSendButton(options = {}) {
   const { includeDisabled = false } = options;
   const selectors = [
+    // Gemini send buttons
+    'button[aria-label*="send message" i]',
+    'button[aria-label*="send to gemini" i]',
+    'button[aria-label*="submit to gemini" i]',
+    'button[aria-label*="submit response" i]',
     'button[data-testid="send-button"]',
     'button[data-testid="send"]',
     'button[data-testid="composer-send-button"]',
@@ -177,7 +192,7 @@ async function ensureComposer() {
     }
     await sleep(500);
   }
-  throw new Error('Could not locate the ChatGPT composer. Make sure the DALL-E conversation is open.');
+  throw new Error('Could not locate the composer. Open a DALL-E or Gemini conversation and try again.');
 }
 
 function setComposerValue(composer, prompt) {
@@ -301,14 +316,27 @@ async function sendPrompt(prompt) {
 }
 
 function isStreaming() {
-  const streamingTurn = document.querySelector('[data-testid="conversation-turn"][data-state="streaming"]');
-  if (streamingTurn) return true;
-  const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
-  if (spinner) return true;
-  const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
-  if (stopButton && isVisible(stopButton)) return true;
+  const firstVisible = (selector) => {
+    const matches = document.querySelectorAll(selector);
+    for (const el of matches) {
+      if (isVisible(el)) return el;
+    }
+    return null;
+  };
+
+  if (firstVisible('[data-testid="conversation-turn"][data-state="streaming"]')) return true;
+  if (firstVisible('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]')) return true;
+
+  if (isGeminiSite) {
+    if (firstVisible('button[aria-label*="stop response" i], button[aria-label*="cancel response" i], button[aria-label*="stop generating" i]')) return true;
+    if (firstVisible('[role="progressbar"], [aria-busy="true"]')) return true;
+  }
+
+  if (firstVisible('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]')) return true;
+
   const sendButton = getSendButton({ includeDisabled: true });
-  if (sendButton && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
+  if (sendButton && isVisible(sendButton) && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
+
   return false;
 }
 
