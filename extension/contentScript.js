@@ -1,3 +1,10 @@
+// Prevent redeclaration errors if the content script is injected multiple times
+// into the same page (e.g., via manual reinjection retries).
+if (window.__promptFlowContentScriptInjected) {
+  return;
+}
+window.__promptFlowContentScriptInjected = true;
+
 let isProcessing = false;
 let lastPromptSentAt = 0;
 
