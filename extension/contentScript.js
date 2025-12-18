@@ -1,84 +1,28 @@
-// Prevent redeclaration errors if the content script is injected multiple times
-// into the same page (e.g., via manual reinjection retries).
-if (window.__promptFlowContentScriptInjected) {
-  return;
-}
-window.__promptFlowContentScriptInjected = true;
+The error `Uncaught SyntaxError: Illegal return statement` happens because you are using a `return` command at the top level of your script. In JavaScript files, `return` can only be used *inside* a function.
 
-let isProcessing = false;
-let lastPromptSentAt = 0;
+Additionally, looking further down your code, you still have the **duplicate declaration** of `isGeminiSite` mentioned previously. This will cause a new crash as soon as you fix the return error.
 
-const isGeminiSite = window.location.hostname.includes('gemini.google.com');
+Here is the corrected code. It wraps the entire script in an "Immediately Invoked Function Expression" (IIFE), which makes the `return` statement valid, and removes the duplicate line.
 
-const isGeminiSite = window.location.hostname.includes('gemini.google.com');
+### Corrected `extension/contentScript.js`
+
+Replace your entire `contentScript.js` file with this:
+
+```javascript
+(function() {
+  // 1. Wrap everything in a function so 'return' is legal.
+  if (window.__promptFlowContentScriptInjected) {
+    return;
+  }
+  window.__promptFlowContentScriptInjected = true;
 
   let isProcessing = false;
   let lastPromptSentAt = 0;
 
+  // 2. Fixed: Removed the duplicate 'const isGeminiSite' declaration
   const isGeminiSite = window.location.hostname.includes('gemini.google.com');
 
-function getComposer() {
-  const selectors = [
-    // Gemini-specific editors.
-    'div[role="textbox"][aria-label*="Gemini" i]',
-    'div[role="textbox"][aria-label*="prompt" i]',
-    'textarea[aria-label*="Gemini" i]',
-    'textarea[aria-label*="prompt" i]',
-    'div[data-testid*="composer"] div[contenteditable="true"]',
-    'div[contenteditable="true"][data-lexical-editor="true"]',
-    'div[aria-label*="prompt" i][contenteditable="true"]',
-    'textarea[data-testid="prompt-text-input"]',
-    'textarea[data-testid="prompt-textarea"]',
-    'textarea[data-testid="textbox"]',
-    'div[data-testid="prompt-textarea"] textarea',
-    'div[data-testid="prompt-textarea"] [contenteditable="true"]',
-    'div[data-testid="prompt-editor"] textarea',
-    'div[data-testid="prompt-editor"] [contenteditable="true"]',
-    'div[data-testid="composer-textarea"] textarea',
-    'div[data-testid="composer-textarea"] [contenteditable="true"]',
-    'div[role="textbox"][data-testid="prompt-textarea"]',
-    'div[role="textbox"][aria-label*="Describe" i]',
-    'div[role="textbox"][aria-label*="want to see" i]',
-    'textarea[data-id="root"]',
-    'div[data-id="root"] textarea',
-    'div[contenteditable="true"][data-id="root"]',
-    'div[data-lexical-editor="true"][contenteditable="true"]',
-    'textarea[placeholder*="Message" i]',
-    'textarea[placeholder*="Describe" i]',
-    'textarea[placeholder*="Create" i]',
-    'textarea[data-testid*="composer"]',
-    'textarea[data-testid*="prompt"]',
-    'textarea[data-testid*="message"]',
-    'div[contenteditable="true"][data-testid*="composer"]',
-    'div[contenteditable="true"][data-testid*="prompt"]',
-    'div[contenteditable="true"][data-testid*="message"]',
-    'div[role="textbox"][data-testid*="composer"]',
-    'div[role="textbox"][data-testid*="prompt"]',
-    'div[role="textbox"][data-testid*="message"]',
-    'div[contenteditable="true"]',
-    'textarea'
-  ];
-  for (const selector of selectors) {
-    const el = document.querySelector(selector);
-    if (el) {
-      if (el.matches('[contenteditable="true"]')) {
-        return el;
-      }
-      const nestedEditable = el.querySelector?.('[contenteditable="true"]');
-      if (nestedEditable) {
-        return nestedEditable;
-      }
-      if (el.matches('textarea, input')) {
-        return el;
-      }
-      const nestedTextarea = el.querySelector?.('textarea');
-      if (nestedTextarea) {
-        return nestedTextarea;
-      }
-    }
-  }
-  return null;
-}
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   function notify(text) {
     try {
@@ -87,52 +31,68 @@ function getComposer() {
         void chrome.runtime.lastError;
       });
     } catch (error) {
-      // Silently swallow errors (e.g., if messaging API is unavailable).
+      // Silently swallow errors
     }
   }
 
-function isStopButton(button) {
-  if (!button) return false;
-  const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
-  const dataTestId = button.getAttribute('data-testid')?.toLowerCase() || '';
-  const text = button.textContent?.trim().toLowerCase() || '';
-  if (ariaLabel.includes('stop') || ariaLabel.includes('cancel')) return true;
-  if (dataTestId.includes('stop') || dataTestId.includes('cancel')) return true;
-  if (text.includes('stop') || text.includes('cancel')) return true;
-  return false;
-}
-
-function getSendButton(options = {}) {
-  const { includeDisabled = false } = options;
-  const selectors = [
-    // Gemini send buttons
-    'button[aria-label*="send message" i]',
-    'button[aria-label*="send to gemini" i]',
-    'button[aria-label*="submit to gemini" i]',
-    'button[aria-label*="submit response" i]',
-    'button[data-testid="send-button"]',
-    'button[data-testid="send"]',
-    'button[data-testid="composer-send-button"]',
-    'button[data-testid="prompt-send-button"]',
-    'button[data-testid="prompt-submit-button"]',
-    'button[data-testid="prompt-submit"]',
-    'button[data-testid*="composer"]',
-    'button[data-testid*="prompt"]',
-    'button[data-testid*="generate"]',
-    'button[data-testid*="submit"]',
-    'button[aria-label*="Send" i]',
-    'button[aria-label*="submit" i]',
-    'button[aria-label*="Generate" i]',
-    'form button[type="submit"]'
-  ];
-  for (const selector of selectors) {
-    const buttons = Array.from(document.querySelectorAll(selector));
-    const visibleButton = buttons.find((button) => {
-      if (!isVisible(button)) return false;
-      if (isStopButton(button)) return false;
-      if (!includeDisabled) {
-        if (button.disabled) return false;
-        if (button.getAttribute('aria-disabled') === 'true') return false;
+  function getComposer() {
+    const selectors = [
+      // Gemini-specific editors
+      'div[role="textbox"][aria-label*="Gemini" i]',
+      'div[role="textbox"][aria-label*="prompt" i]',
+      'textarea[aria-label*="Gemini" i]',
+      'textarea[aria-label*="prompt" i]',
+      'div[data-testid*="composer"] div[contenteditable="true"]',
+      'div[contenteditable="true"][data-lexical-editor="true"]',
+      'div[aria-label*="prompt" i][contenteditable="true"]',
+      'textarea[data-testid="prompt-text-input"]',
+      'textarea[data-testid="prompt-textarea"]',
+      'textarea[data-testid="textbox"]',
+      'div[data-testid="prompt-textarea"] textarea',
+      'div[data-testid="prompt-textarea"] [contenteditable="true"]',
+      'div[data-testid="prompt-editor"] textarea',
+      'div[data-testid="prompt-editor"] [contenteditable="true"]',
+      'div[data-testid="composer-textarea"] textarea',
+      'div[data-testid="composer-textarea"] [contenteditable="true"]',
+      'div[role="textbox"][data-testid="prompt-textarea"]',
+      'div[role="textbox"][aria-label*="Describe" i]',
+      'div[role="textbox"][aria-label*="want to see" i]',
+      'textarea[data-id="root"]',
+      'div[data-id="root"] textarea',
+      'div[contenteditable="true"][data-id="root"]',
+      'div[data-lexical-editor="true"][contenteditable="true"]',
+      'textarea[placeholder*="Message" i]',
+      'textarea[placeholder*="Describe" i]',
+      'textarea[placeholder*="Create" i]',
+      'textarea[data-testid*="composer"]',
+      'textarea[data-testid*="prompt"]',
+      'textarea[data-testid*="message"]',
+      'div[contenteditable="true"][data-testid*="composer"]',
+      'div[contenteditable="true"][data-testid*="prompt"]',
+      'div[contenteditable="true"][data-testid*="message"]',
+      'div[role="textbox"][data-testid*="composer"]',
+      'div[role="textbox"][data-testid*="prompt"]',
+      'div[role="textbox"][data-testid*="message"]',
+      'div[contenteditable="true"]',
+      'textarea'
+    ];
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (el) {
+        if (el.matches('[contenteditable="true"]')) {
+          return el;
+        }
+        const nestedEditable = el.querySelector?.('[contenteditable="true"]');
+        if (nestedEditable) {
+          return nestedEditable;
+        }
+        if (el.matches('textarea, input')) {
+          return el;
+        }
+        const nestedTextarea = el.querySelector?.('textarea');
+        if (nestedTextarea) {
+          return nestedTextarea;
+        }
       }
     }
     return null;
@@ -162,7 +122,6 @@ function getSendButton(options = {}) {
   function getSendButton(options = {}) {
     const { includeDisabled = false } = options;
     const selectors = [
-      // Gemini send buttons
       'button[aria-label*="send message" i]',
       'button[aria-label*="send to gemini" i]',
       'button[aria-label*="submit to gemini" i]',
@@ -226,8 +185,6 @@ function getSendButton(options = {}) {
     }
     return null;
   }
-  throw new Error('Could not locate the composer. Open a DALL-E or Gemini conversation and try again.');
-}
 
   function dispatchEnter(composer) {
     const eventInit = {
@@ -379,48 +336,26 @@ function getSendButton(options = {}) {
     throw new Error('Send button not found. The ChatGPT UI might have changed.');
   }
 
-async function sendPrompt(prompt) {
-  const composer = await ensureComposer();
-  composer.focus();
-  setComposerValue(composer, prompt);
-  await sleep(150);
-  const sendButton = await waitForSendButton();
-  if (sendButton) {
-    lastPromptSentAt = Date.now();
-    sendButton.click();
-    return;
-  }
-  dispatchEnter(composer);
-  await sleep(300);
-  const retryButton = await waitForSendButton();
-  if (retryButton) {
-    lastPromptSentAt = Date.now();
-    retryButton.click();
-    return;
-  }
-  throw new Error('Send button not found. The ChatGPT UI might have changed.');
-}
+  function isStreaming() {
+    const streamingTurn = document.querySelector('[data-testid="conversation-turn"][data-state="streaming"]');
+    if (streamingTurn) return true;
+    const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
+    if (spinner) return true;
+    if (isGeminiSite) {
+      const geminiStop = document.querySelector(
+        'button[aria-label*="stop response" i], button[aria-label*="cancel response" i], button[aria-label*="stop generating" i]'
+      );
+      if (geminiStop && isVisible(geminiStop)) return true;
+      const geminiProgress = document.querySelector('[role="progressbar"], [aria-busy="true"]');
+      if (geminiProgress) return true;
+    }
+    const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
+    if (stopButton && isVisible(stopButton)) return true;
+    const sendButton = getSendButton({ includeDisabled: true });
+    if (sendButton && isVisible(sendButton) && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
 
-function isStreaming() {
-  const streamingTurn = document.querySelector('[data-testid="conversation-turn"][data-state="streaming"]');
-  if (streamingTurn) return true;
-  const spinner = document.querySelector('[data-testid="result-streaming"], [data-testid="response-loader"], [data-testid="image-generator-loading"], [data-testid="image-generation-card-spinner"]');
-  if (spinner) return true;
-  if (isGeminiSite) {
-    const geminiStop = document.querySelector(
-      'button[aria-label*="stop response" i], button[aria-label*="cancel response" i], button[aria-label*="stop generating" i]'
-    );
-    if (geminiStop && isVisible(geminiStop)) return true;
-    const geminiProgress = document.querySelector('[role="progressbar"], [aria-busy="true"]');
-    if (geminiProgress) return true;
+    return false;
   }
-  const stopButton = document.querySelector('button[data-testid*="stop" i], button[data-testid*="cancel" i], button[aria-label*="Stop" i], button[aria-label*="Cancel" i]');
-  if (stopButton && isVisible(stopButton)) return true;
-  const sendButton = getSendButton({ includeDisabled: true });
-  if (sendButton && isVisible(sendButton) && (sendButton.disabled || sendButton.getAttribute('aria-disabled') === 'true')) return true;
-
-  return false;
-}
 
   async function waitForCompletion(timeoutMs = 5 * 60 * 1000) {
     const start = Date.now();
@@ -471,4 +406,7 @@ function isStreaming() {
     }
     return undefined;
   });
+
 })();
+
+```
